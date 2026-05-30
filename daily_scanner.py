@@ -351,24 +351,35 @@ def main():
 
     # Build markdown message
     if final:
-        md = f"## Daily Scan: {today_str}\n\n"
-        md += f"筛选条件：涨幅{CHG_MIN}-{CHG_MAX}% | 换手{TURN_MIN}-{TURN_MAX}% | 市值{MCAP_MIN}-{MCAP_MAX}亿\n"
-        md += f"量比>{VOL_RATIO_MIN} | MA多头 + 放量 | 消息过滤 | 热点+政策加分\n\n"
+        md = f"## Stock Scan: {today_str}\n\n"
+        md += f"> 扫描{STOCK_SAMPLE_SIZE}只主板 | 六层过滤 | 仅供参考\n\n"
+
+        md += f"**筛选流程：**\n"
+        md += f"`L1 量价` 涨幅{CHG_MIN}-{CHG_MAX}% + 换手{TURN_MIN}-{TURN_MAX}% + 市值{MCAP_MIN}-{MCAP_MAX}亿\n"
+        md += f"`L2 技术` MA多头排列 + 成交量逐日放大 + 量比>{VOL_RATIO_MIN}\n"
+        md += f"`L3 消息` 近3天新闻扫描，排除减持/问询/处罚/亏损等负面\n"
+        md += f"`L4 情绪` 同花顺强势股归因，确认是否在当日热点题材中\n"
+        md += f"`L5 政策` 百度概念板块匹配，识别大基金/AI/半导体/新能源等主线\n"
+        md += f"`L6 板块` 仅主板(60/00开头)，排除ST/科创/创业板/北交所\n\n"
+
         md += f"**共 {len(final)} 只候选：**\n\n"
 
         for i, c in enumerate(final):
-            hot_tag = '[HOT]' if c['is_hot'] else ''
-            policy_tag = '[POL]' if c['has_policy'] else ''
-            news_emoji = '[OK]' if c['news_score'] >= 0 else '[!]'
+            hot_tag = '[热点]' if c['is_hot'] else ''
+            policy_tag = '[政策]' if c['has_policy'] else ''
 
             md += f"### {i+1}. {c['name']}({c['code']}) {hot_tag}{policy_tag}\n"
-            md += f"- 价格：{c['price']:.2f} | 涨幅：{c['change_pct']:+.1f}% | 换手：{c['turnover']:.1f}%\n"
-            md += f"- 市值：{c['mcap']:.0f}亿 | 量比：{c['vol_ratio']:.2f} | 技术分：{c['tech_score']}/4\n"
-            md += f"- 消息：{news_emoji} {c['news_summary']}\n"
+            md += f"- 现价{c['price']:.2f} | 涨{c['change_pct']:+.1f}% | 换手{c['turnover']:.1f}% | 市值{c['mcap']:.0f}亿\n"
+            md += f"- 技术面：MA{c['ma5']} | MA20={c['ma20']} | 量比{c['vol_ratio']:.2f} | 技术分{c['tech_score']}/4\n"
+            md += f"- 消息面：{c['news_summary']}\n"
             if c['theme_reason']:
-                md += f"- 热点：{c['theme_reason']}\n"
+                md += f"- 情绪面：{c['theme_reason']}\n"
+            else:
+                md += f"- 情绪面：未在今日强势股名单\n"
             if c['policy_concepts']:
-                md += f"- 政策概念：{c['policy_concepts']}\n"
+                md += f"- 政策面：{c['policy_concepts']}\n"
+            else:
+                md += f"- 政策面：未匹配政策主线概念\n"
             md += f"- 综合评分：{c['composite']}/10\n\n"
 
         md += "---\n"
