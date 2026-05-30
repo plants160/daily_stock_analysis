@@ -14,6 +14,9 @@ import random
 # CONFIG
 # ============================================================
 WECHAT_WEBHOOK = os.environ.get("WECHAT_WEBHOOK_URL", "")
+EMAIL_SENDER = os.environ.get("EMAIL_SENDER", "")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")
+EMAIL_RECEIVERS = os.environ.get("EMAIL_RECEIVERS", "")
 MAX_CANDIDATES_L1 = 30   # Max stocks after quant screening
 MAX_CANDIDATES_L2 = 8    # Max stocks after news/sentiment filter
 STOCK_SAMPLE_SIZE = 200  # How many stocks to scan (random sample)
@@ -78,6 +81,10 @@ def get_stock_sample(n=200):
 
             # Filter ST/*ST stocks
             if 'ST' in name or '*ST' in name:
+                continue
+            # Only 主板 (沪市6xxxxx, 深市0xxxxx/002xxx/003xxx)
+            # Exclude 科创板(688), 创业板(300/301), 北交所(8xxxxx,4xxxxx)
+            if code.startswith(('688', '689', '300', '301', '8', '4')):
                 continue
             if not (CHG_MIN <= chg <= CHG_MAX): continue
             if not (TURN_MIN <= to <= TURN_MAX): continue
@@ -258,6 +265,31 @@ def push_wechat(markdown_text):
         print(f'WeChat push failed: {e}')
 
 
+def send_email(subject, body_text):
+    """Send email via QQ SMTP"""
+    if not EMAIL_SENDER or not EMAIL_PASSWORD or not EMAIL_RECEIVERS:
+        print("Email config not set, skipping email")
+        return
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_SENDER
+    msg['To'] = EMAIL_RECEIVERS
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
+
+    try:
+        server = smtplib.SMTP_SSL('smtp.qq.com', 465)
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_SENDER, EMAIL_RECEIVERS.split(','), msg.as_string())
+        server.quit()
+        print('Email sent successfully')
+    except Exception as e:
+        print(f'Email failed: {e}')
+
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -350,6 +382,10 @@ def main():
 
     print(md)
     push_wechat(md)
+    # Also send email with plain text version
+    plain_text = md.replace('## ', '').replace('### ', '').replace('**', '').replace('- ', '  ')
+    plain_text = plain_text.replace('<br>', '\n')
+    send_email(f'Daily Scan: {today_str}', plain_text)
     print(f'\nDone!')
 
 if __name__ == '__main__':
