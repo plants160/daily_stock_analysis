@@ -1,8 +1,8 @@
 name: Network Smoke
 
 on:
-  schedule:
-    - cron: '0 2 * * 1-5'
+  # schedule:  # 已禁用 (2026-06-19)
+  #   - cron: '0 2 * * 1-5'
   workflow_dispatch:
 
 concurrency:
